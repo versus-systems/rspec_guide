@@ -80,6 +80,20 @@ describe '#fizzbuzz' do
 end
 ```
 
+Results when run:
+
+```bash
+#fizzbuzz
+  returns 1 given 1
+  returns 2 given 2
+  returns "Fizz" given 3
+  returns "Buzz" given 5
+  returns "Fizz" given 6
+  returns 8 given 8
+  returns "Buzz" given 10
+  returns "FizzBuzz" given 15
+```
+
 ### Persist
 
 This is a simple function that given an object it calls `save` on it and either returns the persisted object or `nil`. Not necessarily the best function but I wanted to illustrate two concepts.
@@ -128,6 +142,19 @@ context 'when testing generic object interaction' do
 end
 ```
 
+Results when run:
+
+```bash
+when testing generic object interaction
+  #persist
+    calls "save" on the model
+    when the model persists successfully
+      returns the persisted model
+    when the model fails to persist
+      returns nil
+```
+
+
 Alternatively if we have a function that is expecting a very specific type of input, we should use a specific mock based on the type of object. This will ensure we are not trying to stub methods that don't exist on the real object. It is preferable though, when possible, to create generic functions. But for the point of illustration we'll make a `persist_user` function that wants a `User` passed in.
 
 ```ruby
@@ -173,6 +200,18 @@ context 'when testing specific object interaction' do
     end
   end
 end
+```
+
+Results when run:
+
+```bash
+when testing specific object interaction
+  #persist_user
+    calls "save" on the user
+    when the user persists successfully
+      returns the persisted user
+    when the user fails to persist
+      returns nil
 ```
 
 ### Find
@@ -234,6 +273,18 @@ context 'when using injection' do
 end
 ```
 
+Results when run:
+
+```bash
+when using injection
+  #find_or_create
+    when the record is found
+      returns the existing record
+    when the record is not found
+      uses repository to create a new user
+      returns a new record
+```
+
 Alternatively, if we don't use injection, we can create our `class_double` as a stubbed constant. That means everywhere we use that class we'll actually get our stubbed class. This isn't as nice as injection, but there are many cases where this may end up being the better way to go. Our spec will look almost the same, but this time we are not passing in an extra argument and we have created our mock slightly different.
 
 First our new function that is not injectable:
@@ -273,6 +324,18 @@ context 'when stubbing constants' do
     end
   end
 end
+```
+
+Results when run:
+
+```bash
+when stubbing constants
+  #find_or_create
+    when the record is found
+      returns the existing record
+    when the record is not found
+      uses User to create a new user
+      returns a new record
 ```
 
 ### Car
@@ -379,6 +442,29 @@ describe Car do
 end
 ```
 
+Results when run:
+
+```bash
+Car
+  #popular?
+    when the car is red
+      should be popular
+    when the car is blue
+      should not be popular
+  #range
+    with a tank with 3 gallons of fuel
+      should eq 60
+    with a tank with 5 gallons of fuel
+      should eq 100
+  #drive
+    when driving 20 miles
+      should change #odometer by 20
+      burns 1 gallon of fuel
+    when driving 40 miles
+      should change #odometer by 40
+      burns 2 gallons of fuel
+```
+
 ### Model Specs
 
 Our ActiveRecord models should have relationships defined as well as validations. There may be other methods as well, but those are the primary types of things on models. If there are other public methods those should be tested in much the same way as other Classes like in the `Car` example. A method added to a model should not persist the model. Helper methods can change the attributes on a model in a useful way, but they should not persist those changes. It should be up to the outside holder of the model to decide if it should be persisted. As such it should be perfectly safe to call and test methods on a model without having to have a database hit or stub our object under test.
@@ -409,6 +495,19 @@ describe User, type: :model do
 end
 ```
 
+Result when run:
+
+```bash
+User
+  should have a secure password
+  should have many sessions
+  should belong to company
+  should require email to be set
+  should require case sensitive unique value for email
+  should have an index on columns email
+  should require name to be set
+```
+
 ### Persist Component
 
 In our current codebases we use a lot of standalone functions called `Components`. These are either directly lambdas, or are indirectly lambdas produced by a higher order function that takes mata/configuration arguments.
@@ -416,6 +515,10 @@ In our current codebases we use a lot of standalone functions called `Components
 There is not much difference between these tests and the tests described under the function examples. Key differences are our lambdas always take an input hash and return an `Either` (`Right` or `Left`). An `Either` has various predicates that can be used to easily check in a spec what you have: `right?`, `success?`, `left?`, `failure?`.
 
 As a general strategy you should minimize the input to just what is needed for testing the component. It may well be that you expect other things to be in the input hash when the component is typically used, but if they have no bearing on the function you are testing, leave them out of the input.
+
+Since `Persist` is a higher order function we have a spec to ensure that given the expected arguments, we get a `callable` thing back (i.e. a lambda).
+
+We then turn our focus to actually testing the lambda, varying both the meta input to the `Persist[]` function as well as the input hash as necessary. Note, many of our components, especially the common components, work on a large variety of objects, usually all different models. So we use generic `double` most of the time, or if not persisting, the actual real model.
 
 Here we have a real component from our system:
 
@@ -500,7 +603,22 @@ module Components
 end
 ```
 
-Since `Persist` is a higher order function we have a spec to ensure that given the expected arguments, we get a `callable` thing back (i.e. a lambda).
+Result when run:
 
-We then turn our focus to actually testing the lambda, varying both the meta input to the `Persist[]` function as well as the input hash as necessary. Note, many of our components, especially the common components, work on a large variety of objects, usually all different models. So we use generic `double` most of the time, or if not persisting, the actual real model.
+```bash
+.[]
+  returns a callable
+
+.[]#call
+  when persisting the model under :user
+    saves the object in the input under the key :user
+    when the save is successful
+      returns a successful result
+      returns the input
+    when the save fails
+      returns a failure result
+      returns the errors
+  when persisting the model under :game
+    saves the object in the input under the key :game
+```
 
